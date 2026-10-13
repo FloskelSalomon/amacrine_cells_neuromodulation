@@ -16,10 +16,13 @@ def save_with_meta(df, path, description, inputs, params):
 def _git_info():
     try:
         commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-        dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], text=True).strip())
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"], text=True
+        )
+        dirty_files = [line[3:] for line in status.splitlines()]
     except (subprocess.CalledProcessError, FileNotFoundError):
-        commit, dirty = None, None
-    return commit, dirty
+        commit, dirty_files = None, None
+    return commit, dirty_files
 
 
 def _json_default(o):
@@ -57,15 +60,16 @@ def _describe_model(model, X):
 
 def save_model_with_meta(model, path, description, inputs, params, X_train, extras=None):
     path = Path(path)
-    joblib.dump(model, path)
     commit, dirty = _git_info()
+    joblib.dump(model, path)
     feature_names = getattr(model, "feature_names_in_", None)
     meta = {
         "created": dt.datetime.now().isoformat(timespec="seconds"),
         "description": description,
         "script": sys.argv[0],
         "git_commit": commit,
-        "git_dirty": dirty,  # True = uncommitted changes when model was saved
+        "git_dirty": bool(dirty_files) if dirty_files is not None else None,
+        "git_dirty_files": dirty_files,
         "inputs": inputs,
         "params": params,
         "train_shape": np.shape(X_train),
