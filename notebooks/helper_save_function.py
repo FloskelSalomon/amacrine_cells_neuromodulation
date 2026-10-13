@@ -60,7 +60,7 @@ def _describe_model(model, X):
 
 def save_model_with_meta(model, path, description, inputs, params, X_train, extras=None):
     path = Path(path)
-    commit, dirty = _git_info()
+    commit, dirty_files = _git_info()
     joblib.dump(model, path)
     feature_names = getattr(model, "feature_names_in_", None)
     meta = {
